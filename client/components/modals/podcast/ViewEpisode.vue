@@ -34,6 +34,20 @@
             {{ audioFileSize }}
           </p>
         </div>
+        <div class="flex-shrink-0 ml-4">
+          <ui-btn v-if="!isTranscribing && !hasTranscript" @click="transcribeEpisode" :loading="isTranscribing">
+            <span class="material-symbols mr-2">record_voice_over</span>
+            Transcribe
+          </ui-btn>
+          <ui-btn v-else-if="hasTranscript" @click="viewTranscript" variant="secondary">
+            <span class="material-symbols mr-2">description</span>
+            View Transcript
+          </ui-btn>
+          <ui-btn v-else disabled>
+            <span class="material-symbols mr-2 animate-spin">refresh</span>
+            Transcribing...
+          </ui-btn>
+        </div>
       </div>
     </div>
   </modals-modal>
@@ -43,7 +57,8 @@
 export default {
   data() {
     return {
-      processing: false
+      processing: false,
+      isTranscribing: false
     }
   },
   computed: {
@@ -92,9 +107,32 @@ export default {
     },
     bookCoverAspectRatio() {
       return this.$store.getters['libraries/getBookCoverAspectRatio']
+    },
+    hasTranscript() {
+      return this.episode.transcript != null
     }
   },
-  methods: {},
+  methods: {
+    async transcribeEpisode() {
+      try {
+        this.isTranscribing = true
+        await this.$axios.$post(`/api/podcasts/${this.libraryItem.id}/episode/${this.episodeId}/transcribe`)
+        this.$toast.success('Transcription started')
+      } catch (error) {
+        console.error('Failed to start transcription', error)
+        this.$toast.error(error.response?.data || 'Failed to start transcription')
+      } finally {
+        this.isTranscribing = false
+      }
+    },
+    viewTranscript() {
+      // TODO: Implement transcript viewing modal
+      this.$store.commit('globals/setShowTranscriptModal', {
+        libraryItem: this.libraryItem,
+        episode: this.episode
+      })
+    }
+  },
   mounted() {}
 }
 </script>

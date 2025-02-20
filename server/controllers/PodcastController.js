@@ -12,6 +12,8 @@ const { validateUrl } = require('../utils/index')
 
 const Scanner = require('../scanner/Scanner')
 const CoverManager = require('../managers/CoverManager')
+const { Storage } = require('@google-cloud/storage')
+const { SpeechClient } = require('@google-cloud/speech')
 
 /**
  * @typedef RequestUserObject
@@ -537,6 +539,120 @@ class PodcastController {
 
     req.libraryItem = libraryItem
     next()
+  }
+
+  /**
+   * POST /api/podcasts/:id/episode/:episodeId/transcribe
+   * Start transcription for an episode
+   *
+   * @param {RequestWithLibraryItem} req
+   * @param {Response} res
+   */
+  async transcribeEpisode(req, res) {
+    if (!req.user.isAdminOrUp) {
+      Logger.error(`[PodcastController] Non-admin user "${req.user.username}" attempted to transcribe episode`)
+      return res.sendStatus(403)
+    }
+
+    const episode = req.libraryItem.media.podcastEpisodes.find((ep) => ep.id === req.params.episodeId)
+    if (!episode) {
+      Logger.error(`[PodcastController] Episode not found "${req.params.episodeId}"`)
+      return res.status(404).send('Episode not found')
+    }
+
+    if (!episode.audioFile) {
+      Logger.error(`[PodcastController] Episode has no audio file "${req.params.episodeId}"`)
+      return res.status(400).send('Episode has no audio file')
+    }
+
+    try {
+      // Initialize GCP clients
+      const storage = new Storage()
+      const speech = new SpeechClient()
+
+      // Create a unique bucket name for this instance
+      const bucketName = `2893ue9`
+
+      // Create bucket if it doesn't exist
+      const [bucket] = await storage.createBucket(bucketName).catch(async (err) => {
+        if (err.code === 409) {
+          // Bucket already exists
+          return [storage.bucket(bucketName)]
+        }
+        throw err
+      })
+
+      // Upload file to GCS
+      const gcsPath = `podcasts/${req.libraryItem.id}/${episode.id}/${Path.basename(episode.audioFile.metadata.path)}`
+      await bucket.upload(episode.audioFile.metadata.path, {
+        destination: gcsPath
+      })
+
+      // Start transcription
+      const [operation] = await speech.longRunningRecognize({
+        audio: {
+          uri: `gs://${bucketName}/${gcsPath}`
+        },
+        config: {
+          encoding: 'MP3',
+          sampleRateHertz: 44100,
+          languageCode: 'en-US'
+        }
+      })
+
+      // Store operation name for later polling
+      episode.transcriptionOperation = operation.name
+      await Database.libraryItemModel.findByIdAndUpdate(req.libraryItem.id, {
+        media: req.libraryItem.media
+      })
+
+      // Start polling for transcription completion
+      this.pollTranscriptionOperation(req.libraryItem.id, episode.id, operation)
+
+      res.sendStatus(200)
+    } catch (error) {
+      Logger.error('[PodcastController] Failed to start transcription', error)
+      res.status(500).send('Failed to start transcription')
+    }
+  }
+
+  /**
+   * Poll transcription operation until complete
+   *
+   * @param {string} libraryItemId
+   * @param {string} episodeId
+   * @param {Operation} operation
+   */
+  async pollTranscriptionOperation(libraryItemId, episodeId, operation) {
+    try {
+      const [response] = await operation.promise()
+
+      // Get library item and episode
+      const libraryItem = await Database.libraryItemModel.findById(libraryItemId)
+      if (!libraryItem) {
+        Logger.error(`[PodcastController] Library item not found "${libraryItemId}"`)
+        return
+      }
+
+      const episode = libraryItem.media.podcastEpisodes.find((ep) => ep.id === episodeId)
+      if (!episode) {
+        Logger.error(`[PodcastController] Episode not found "${episodeId}"`)
+        return
+      }
+
+      // Store transcript
+      episode.transcript = response.results.map((result) => result.alternatives[0].transcript).join('\n')
+      delete episode.transcriptionOperation
+
+      await Database.libraryItemModel.findByIdAndUpdate(libraryItemId, {
+        media: libraryItem.media
+      })
+
+      // Notify clients
+      SocketAuthority.emitter('item_updated', libraryItem)
+    } catch (error) {
+      Logger.error('[PodcastController] Failed to get transcription result', error)
+    }
   }
 }
 module.exports = new PodcastController()

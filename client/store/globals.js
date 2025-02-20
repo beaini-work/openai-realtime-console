@@ -80,7 +80,9 @@ export const state = () => ({
     { text: 'Trailer', value: 'trailer', descriptionKey: 'LabelTrailer' },
     { text: 'Bonus', value: 'bonus', descriptionKey: 'LabelBonus' }
   ],
-  libraryIcons: ['database', 'audiobookshelf', 'books-1', 'books-2', 'book-1', 'microphone-1', 'microphone-3', 'radio', 'podcast', 'rss', 'headphones', 'music', 'file-picture', 'rocket', 'power', 'star', 'heart']
+  libraryIcons: ['database', 'audiobookshelf', 'books-1', 'books-2', 'book-1', 'microphone-1', 'microphone-3', 'radio', 'podcast', 'rss', 'headphones', 'music', 'file-picture', 'rocket', 'power', 'star', 'heart'],
+  showTranscriptModal: false,
+  transcriptModalData: null
 })
 
 export const getters = {
@@ -141,6 +143,7 @@ export const mutations = {
   },
   setShowViewPodcastEpisodeModal(state, val) {
     state.showViewPodcastEpisodeModal = val
+    if (!val) state.selectedEpisode = null
   },
   setShowRSSFeedOpenCloseModal(state, val) {
     state.showRSSFeedOpenCloseModal = val
@@ -219,6 +222,15 @@ export const mutations = {
       state.selectedMediaItems = state.selectedMediaItems.filter((i) => i.id !== item.id)
     } else if (selected && !isAlreadySelected) {
       state.selectedMediaItems.push(item)
+    }
+  },
+  setShowTranscriptModal(state, data) {
+    if (data === false) {
+      state.showTranscriptModal = false
+      state.transcriptModalData = null
+    } else {
+      state.showTranscriptModal = true
+      state.transcriptModalData = data
     }
   }
 }

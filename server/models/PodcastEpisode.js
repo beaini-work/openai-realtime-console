@@ -50,6 +50,10 @@ class PodcastEpisode extends Model {
     this.createdAt
     /** @type {Date} */
     this.updatedAt
+    /** @type {string} */
+    this.transcript
+    /** @type {string} */
+    this.transcriptionOperation
   }
 
   /**
@@ -113,7 +117,15 @@ class PodcastEpisode extends Model {
 
         audioFile: DataTypes.JSON,
         chapters: DataTypes.JSON,
-        extraData: DataTypes.JSON
+        extraData: DataTypes.JSON,
+        transcript: {
+          type: DataTypes.TEXT,
+          allowNull: true
+        },
+        transcriptionOperation: {
+          type: DataTypes.STRING,
+          allowNull: true
+        }
       },
       {
         sequelize,

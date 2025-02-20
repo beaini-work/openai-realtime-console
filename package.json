@@ -1,6 +1,6 @@
 {
   "name": "audiobookshelf",
-  "version": "2.19.4",
+  "version": "2.21.0",
   "buildNumber": 1,
   "description": "Self-hosted audiobook and podcast server",
   "main": "index.js",
@@ -36,6 +36,8 @@
   "author": "advplyr",
   "license": "GPL-3.0",
   "dependencies": {
+    "@google-cloud/speech": "^6.7.0",
+    "@google-cloud/storage": "^7.15.2",
     "axios": "^0.27.2",
     "cookie-parser": "^1.4.6",
     "express": "^4.17.1",
