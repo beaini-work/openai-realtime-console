@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import logo from "/assets/openai-logomark.svg";
 import LearningAssessment from "./LearningAssessment";
 import EventLog from "./EventLog";
+import ResponsePanel from "./ResponsePanel";
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -88,21 +89,36 @@ export default function App() {
           role: "system",
           content: [
             {
-              type: "input_text",
-              text: `You are an astronomy teacher conducting a verbal assessment. You have access to these facts about Basic Astronomy:
-                    - The Solar System consists of the Sun and all celestial objects bound to it by gravity
-                    - There are eight recognized planets in our Solar System
-                    - The four inner planets are Mercury, Venus, Earth, and Mars
-                    - The four outer planets are Jupiter, Saturn, Uranus, and Neptune
-                    - Pluto was reclassified as a dwarf planet in 2006
-                    - The Sun is a main-sequence star at the center of our Solar System
-                    - The Sun contains 99.86% of the Solar System's mass
-                    - The Sun's surface temperature is about 5,500°C (10,000°F)
-                    - Light from the Sun takes about 8 minutes to reach Earth
+              type: "text",
+              text: `You are a high school math teacher conducting a verbal assessment. You have access to these key mathematical concepts:
+
+                    Algebra:
+                    - Quadratic equations can be solved using the formula: x = (-b ± √(b² - 4ac)) / 2a
+                    - Linear equations are in the form y = mx + b, where m is slope and b is y-intercept
+                    - The slope (m) between two points is calculated as: (y₂ - y₁) / (x₂ - x₁)
+                    - Exponent rules: aⁿ × aᵐ = aⁿ⁺ᵐ, (aⁿ)ᵐ = aⁿᵐ, a⁰ = 1
+
+                    Geometry:
+                    - Area of a circle is πr², where r is the radius
+                    - The Pythagorean theorem states that a² + b² = c² in a right triangle
+                    - The sum of interior angles in a triangle is 180 degrees
+                    - Area of a rectangle is length × width, area of a triangle is ½ × base × height
+
+                    Trigonometry:
+                    - Basic trigonometric ratios in a right triangle:
+                      * sin(θ) = opposite / hypotenuse
+                      * cos(θ) = adjacent / hypotenuse
+                      * tan(θ) = opposite / adjacent
+                    - The unit circle helps define trigonometric functions for all angles
                     
-                    Engage in a natural conversation. Ask questions one at a time, listen to responses, 
-                    provide encouraging feedback, and correct any misconceptions. Keep the tone friendly and educational.
-                    Start by introducing yourself and explaining what you'll be doing.`
+                    Engage in a natural conversation. Ask questions one at a time about these topics, 
+                    listen to responses, provide encouraging feedback, and correct any misconceptions. 
+                    Keep the tone friendly and educational. Ask questions that test understanding rather 
+                    than just memorization. Start by introducing yourself and explaining what you'll be doing.
+                    
+                    When evaluating responses, provide a score out of 100 and specific feedback about what 
+                    was correct and what could be improved. Help students understand the underlying concepts 
+                    when they make mistakes.`
             },
           ],
         },
@@ -271,8 +287,13 @@ export default function App() {
           />
         </div>
 
+        {/* Middle: Response Assessment */}
+        <div className="w-[350px] border-l border-gray-200 bg-white p-4 overflow-y-auto">
+          <ResponsePanel events={events} sendClientEvent={sendClientEvent} />
+        </div>
+
         {/* Right side: Debug Event Log */}
-        <div className="w-[400px] border-l border-gray-200 bg-white p-4 overflow-y-auto">
+        <div className="w-[350px] border-l border-gray-200 bg-white p-4 overflow-y-auto">
           <div className="sticky top-0 bg-white pb-2 mb-2 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Event Log</h2>
           </div>
