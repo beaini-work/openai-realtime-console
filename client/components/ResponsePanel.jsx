@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 const ResponsePanel = ({ events, sendClientEvent }) => {
   const [functionAdded, setFunctionAdded] = useState(false);
-  const [functionCallOutput, setFunctionCallOutput] = useState(null);
+  const [functionCallOutputs, setFunctionCallOutputs] = useState([]);
 
   // Session update configuration
   const sessionUpdate = {
@@ -11,7 +11,7 @@ const ResponsePanel = ({ events, sendClientEvent }) => {
       tools: [{
         type: "function",
         name: "assess_math_answer",
-        description: "Call this function when assessing a student's answer to a math question.",
+        description: "Call this function afterm a student responds to a math question.",
         parameters: {
           type: "object",
           strict: true,
@@ -41,8 +41,23 @@ const ResponsePanel = ({ events, sendClientEvent }) => {
     events.forEach(event => {
       if (event.type === "response.output_item.done" && 
           event.item?.type === "function_call" &&
-          event.item?.status === "completed") {
-        setFunctionCallOutput(event.item);
+          event.item?.status === "completed" &&
+          event.item.name === "assess_math_answer") {
+        setFunctionCallOutputs(prev => {
+          const isDuplicate = prev.some(output => output.call_id === event.item.call_id);
+          if (isDuplicate) return prev;
+          return [event.item, ...prev];
+        });
+
+        // Trigger voice response after assessment is rendered
+        setTimeout(() => {
+          sendClientEvent({
+            type: "response.create",
+            response: {
+              instructions: "Briefly explain the assessment results and ask if the student has any questions."
+            },
+          });
+        }, 500);
       }
     });
   }, [events, functionAdded, sendClientEvent]);
@@ -53,7 +68,7 @@ const ResponsePanel = ({ events, sendClientEvent }) => {
     const { question, correctAnswer, userAnswer, score } = JSON.parse(output.arguments);
 
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 mb-6 border-b border-gray-200 pb-6 last:border-b-0">
         <div className="p-4 bg-white rounded-md shadow-sm">
           <h3 className="font-semibold mb-2">Question:</h3>
           <p className="text-gray-700">{question}</p>
@@ -82,7 +97,7 @@ const ResponsePanel = ({ events, sendClientEvent }) => {
     );
   }
 
-  if (!functionCallOutput) {
+  if (functionCallOutputs.length === 0) {
     return (
       <div className="p-4">
         <p className="text-gray-500">Waiting for assessment results...</p>
@@ -93,7 +108,11 @@ const ResponsePanel = ({ events, sendClientEvent }) => {
   return (
     <div className="p-4">
       <h2 className="text-lg font-bold mb-4">Assessment Results</h2>
-      <FunctionCallOutput output={functionCallOutput} />
+      <div className="max-h-[calc(100vh-8rem)] overflow-y-auto">
+        {functionCallOutputs.map((output, index) => (
+          <FunctionCallOutput key={output.call_id || index} output={output} />
+        ))}
+      </div>
     </div>
   );
 };
